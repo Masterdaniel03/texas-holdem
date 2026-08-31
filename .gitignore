@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments (虛擬環境)
+venv/
+.venv/
+env/
+.env/
+
+# IDE 產生的設定檔 (如 VS Code)
+.vscode/
+.idea/
+*.swp
+
+# Mac 系統自動產生的垃圾檔
+.DS_Store
+
+# Logs and databases
+*.log
+*.sqlite3
