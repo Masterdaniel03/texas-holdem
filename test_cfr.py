@@ -21,8 +21,8 @@ def run_training():
         
         print(f"\nPeek into Memory - InfoSet: {sample_key}")
         print(f"Regret Sums (F, C, R): {sample_node.regret_sum}")
-       
-        avg_strat = [round(p * 100, 1) for p in sample_node.get_average_strategy()]
+        
+        avg_strat = [round(p * 100, 1) for p in sample_node.get_average_strategy()] 
         print(f"Master Strategy: Fold {avg_strat[0]}% | Call {avg_strat[1]}% | Raise {avg_strat[2]}%")
 
 if __name__ == "__main__":

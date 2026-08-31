@@ -76,9 +76,6 @@ class CFRTrainer:
         return node_value
     
     def is_terminal(self, history: str) -> bool:
-        """
-        Determines if the current timeline has reached the end of the hand.
-        """
         if not history:
             return False
 
