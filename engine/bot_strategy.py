@@ -1,5 +1,7 @@
 import random
 from abc import ABC, abstractmethod
+
+from engine.abstraction import state_key
 from engine.monte_carlo import estimate_equity
 
 
@@ -63,6 +65,7 @@ class HeuristicAgent(Agent):
 
         return "fold", None
 
+
 class InfoSet:
     def __init__(self, key: str, num_actions: int = 3):
         self.key = key 
@@ -97,3 +100,60 @@ class InfoSet:
                 avg_strategy[i] = 1.0 / self.num_actions
                 
         return avg_strategy
+
+
+class CFRAgent(Agent):
+    def __init__(self, model_path: str = None):
+        self.node_map = {}
+        self.fallback_agent = HeuristicAgent()
+        if model_path is not None:
+            from engine.cfr_trainer import CFRTrainer
+
+            self.node_map = CFRTrainer().load_model(model_path)
+
+    def decide(self, game, player, valid_actions, context):
+        history = getattr(game, "bet_history", "")
+        street = getattr(game, "current_street", None)
+        info_set_key = state_key(
+            player.hand,
+            game.community_cards,
+            history,
+            street=street,
+        )
+        node = self.node_map.get(info_set_key)
+        if node is None:
+            return self.fallback_agent.decide(game, player, valid_actions, context)
+
+        strategy = node.get_average_strategy()
+        available_indices = []
+        action_names = []
+        if "fold" in valid_actions and len(strategy) > 0:
+            available_indices.append(0)
+            action_names.append("fold")
+        if len(strategy) > 1:
+            check_call = "check" if "check" in valid_actions else "call"
+            if check_call in valid_actions:
+                available_indices.append(1)
+                action_names.append(check_call)
+        if "raise" in valid_actions and len(strategy) > 2:
+            available_indices.append(2)
+            action_names.append("raise")
+
+        if not available_indices:
+            return self.fallback_agent.decide(game, player, valid_actions, context)
+
+        probabilities = [strategy[index] for index in available_indices]
+        total_probability = sum(probabilities)
+        if total_probability <= 0:
+            probabilities = [1.0 / len(available_indices)] * len(available_indices)
+        else:
+            probabilities = [probability / total_probability for probability in probabilities]
+        action = random.choices(action_names, weights=probabilities, k=1)[0]
+
+        if action == "raise":
+            size = max(
+                context["min_raise_to"],
+                int(context["pot"] * 0.75) + context["current_bet"],
+            )
+            return action, min(size, context["max_bet"])
+        return action, None

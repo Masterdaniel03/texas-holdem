@@ -12,6 +12,8 @@ class GameEngine:
         self.community_cards = []
         self.current_bet = 0
         self.button_index = -1
+        self.current_street = "preflop"
+        self.bet_history = ""
 
     # ---------- pot ----------
 
@@ -30,6 +32,8 @@ class GameEngine:
         self.community_cards = []
         self.pot = 0
         self.current_bet = 0
+        self.current_street = "preflop"
+        self.bet_history = ""
         self.button_index = (self.button_index + 1) % len(self.players)
 
         for player in self.players:
@@ -127,14 +131,18 @@ class GameEngine:
             if action not in valid_actions:
                 queue.insert(0, player)
                 continue
+            self.bet_history += {"fold": "f", "call": "c", "check": "c", "raise": "r"}[action]
 
             if action == "fold":
                 player.fold()
                 print(f"{player.name} folds")
 
-            elif action == "call":
+            elif action in ("call", "check"):
                 self.place_bet(player, owed)
-                print(f"{player.name} calls ({owed})")
+                if action == "check":
+                    print(f"{player.name} checks")
+                else:
+                    print(f"{player.name} calls ({owed})")
 
             elif action == "raise":
                 raise_amount = requested_raise_to if requested_raise_to is not None else min_legal_raise
@@ -200,16 +208,23 @@ class GameEngine:
     # ---------- full hand ----------
 
     def play_hand(self, small_blind: int, big_blind: int, max_bet: int):
-        
         self.start_round()
         self.post_blinds(small_blind, big_blind)
         self.execute_betting_round(big_blind, max_bet, self.preflop_first_to_act(), is_preflop=True)
+        self.bet_history += "/"
 
-        for deal_street in (self.deal_flop, self.deal_turn_or_river, self.deal_turn_or_river):
+        streets = (
+            (self.deal_flop, "flop"),
+            (self.deal_turn_or_river, "turn"),
+            (self.deal_turn_or_river, "river"),
+        )
+        for deal_street, street_name in streets:
             if self.is_hand_over():
                 break
             deal_street()
+            self.current_street = street_name
             if sum(1 for p in self.players if p.is_active and p.chips > 0) > 1:
                 self.execute_betting_round(big_blind, max_bet, self.postflop_first_to_act())
+            self.bet_history += "/"
 
         self.determine_winner()
